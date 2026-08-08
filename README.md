@@ -1,5 +1,7 @@
 # Covenant Compliance Agent
 
+[![CI](https://github.com/D-Arshad-Dazai-Dimash/ai-halyk-ch/actions/workflows/ci.yml/badge.svg)](https://github.com/D-Arshad-Dazai-Dimash/ai-halyk-ch/actions/workflows/ci.yml)
+
 > 🇷🇺 **[Русская версия этого документа — README.ru.md](README.ru.md)**
 
 An agent that reads dirty, OCR-scanned Russian-language corporate credit
@@ -46,6 +48,10 @@ contributed. Full details in [Model fallback](#model-fallback).
 **Prerequisites:** Python 3.11+ and Tesseract OCR with Russian language data.
 
 ```bash
+# 0. Get the code
+git clone https://github.com/D-Arshad-Dazai-Dimash/ai-halyk-ch.git
+cd ai-halyk-ch
+
 # 1. Python environment
 python -m venv .venv
 source .venv/bin/activate          # Windows Git Bash: source .venv/Scripts/activate
@@ -396,6 +402,10 @@ pytest                          # 265 tests, ~30 s
 RUN_SLOW_INTEGRATION=1 pytest   # plus full-pipeline runs
 ```
 
+CI runs the suite on every push (badge at the top). The dataset is not
+published, so the runner sees 249 tests pass and 25 skip cleanly — the ones
+that need the corpus or a local model server. Nothing fails without them.
+
 Beyond unit and golden tests, the suite includes **metamorphic tests** that
 never consult the answer key. They assert relationships that must hold
 whatever the right answers are: renaming every document, reordering ledger
@@ -434,6 +444,8 @@ docker compose --profile online run --rm covenant-agent-online
 ```
 run.py                  CLI entry point
 src/covenant_agent/     production pipeline (never reads ground_truth.json)
+  deterministic_pipeline.py   the orchestrator: stages 1-9, in order
+  diagnostics.py              the gap report behind --diagnostics
   ingestion/              PDF discovery, rendering, parallel OCR + caching
   documents/              type classification, OCR canonicalisation, fact extraction
   resolve/                authority graph -- which document governs which question
@@ -441,8 +453,13 @@ src/covenant_agent/     production pipeline (never reads ground_truth.json)
   ledger/                 CSV loading, metric taxonomy, anchored classification
   calc/                   Decimal arithmetic, comparison, boundary reconciliation
   evidence/               counterfactual decisive-transaction search
-  submission/             schema-exact output generation
+  verify/                 independent recomputation used to cross-check calc/
+  validation/             per-cell validation and confidence
+  submission/             schema-exact output generation and schema checks
+  common/                 configuration, shared enums, exceptions, OCR environment
+  llm/                    guarded provider clients + response cache (fallback only)
 calibration/            accuracy measurement vs the answer key -- developer-time only
+.github/workflows/      CI: installs Tesseract, runs the suite on every push
 tests/unit/             formulas, comparisons, schema, GT-leakage guard
 tests/integration/      multi-stage flows, environment smoke, GT-absent run
 tests/golden/           public-dataset fixtures (concrete IDs live only here)

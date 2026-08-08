@@ -1,5 +1,7 @@
 # Агент проверки финансовых ковенантов
 
+[![CI](https://github.com/D-Arshad-Dazai-Dimash/ai-halyk-ch/actions/workflows/ci.yml/badge.svg)](https://github.com/D-Arshad-Dazai-Dimash/ai-halyk-ch/actions/workflows/ci.yml)
+
 > 🇬🇧 **[English version — README.md](README.md)**
 
 Агент читает «грязные» отсканированные PDF кредитных договоров на русском
@@ -47,6 +49,10 @@ cp .env.example .env      # затем впишите СВОЙ ключ в .env
 **Требования:** Python 3.11+ и Tesseract OCR с русскими языковыми данными.
 
 ```bash
+# 0. Получить код
+git clone https://github.com/D-Arshad-Dazai-Dimash/ai-halyk-ch.git
+cd ai-halyk-ch
+
 # 1. Окружение Python
 python -m venv .venv
 source .venv/bin/activate          # Windows Git Bash: source .venv/Scripts/activate
@@ -403,6 +409,10 @@ pytest                          # 265 тестов, ~30 с
 RUN_SLOW_INTEGRATION=1 pytest   # плюс полные прогоны пайплайна
 ```
 
+CI гоняет набор на каждый push (бейдж вверху). Датасет не публикуется,
+поэтому на раннере 249 тестов проходят, а 25 корректно пропускаются — те,
+которым нужен корпус или локальный сервер модели. Без них ничего не падает.
+
 Помимо модульных и эталонных, набор включает **метаморфные тесты**, которые
 никогда не смотрят в файл ответов. Они утверждают отношения, которые должны
 выполняться независимо от правильных ответов: переименование всех
@@ -444,6 +454,8 @@ docker compose --profile online run --rm covenant-agent-online
 ```
 run.py                  точка входа CLI
 src/covenant_agent/     production-пайплайн (никогда не читает ground_truth.json)
+  deterministic_pipeline.py   оркестратор: стадии 1-9 по порядку
+  diagnostics.py              отчёт о пробелах за флагом --diagnostics
   ingestion/              поиск PDF, рендеринг, параллельный OCR + кэш
   documents/              классификация типов, канонизация OCR, извлечение фактов
   resolve/                граф авторитетности — какой документ отвечает на какой вопрос
@@ -451,8 +463,13 @@ src/covenant_agent/     production-пайплайн (никогда не чит�
   ledger/                 загрузка CSV, таксономия показателей, якорная классификация
   calc/                   Decimal-арифметика, сравнение, согласование на границе
   evidence/               поиск решающей транзакции от противного
-  submission/             формирование вывода строго по схеме
+  verify/                 независимый пересчёт для перекрёстной проверки calc/
+  validation/             проверка каждой ячейки и оценка уверенности
+  submission/             формирование вывода строго по схеме и проверка схемы
+  common/                 конфигурация, общие перечисления, исключения, окружение OCR
+  llm/                    защищённые клиенты провайдеров + кэш ответов (только фолбэк)
 calibration/            измерение точности против файла ответов — только при разработке
+.github/workflows/      CI: ставит Tesseract и гоняет тесты на каждый push
 tests/unit/             формулы, сравнения, схема, защита от утечки ответов
 tests/integration/      многостадийные потоки, проверка окружения, прогон без ответов
 tests/golden/           эталоны публичного датасета (конкретные ID только здесь)
