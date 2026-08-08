@@ -1,0 +1,36 @@
+[project]
+name = "covenant-agent"
+version = "0.1.0"
+description = "Deterministic covenant-compliance agent over dirty financial PDFs + a transaction ledger (offline)."
+requires-python = ">=3.11"
+dependencies = [
+    "pymupdf==1.24.11",
+    "pytesseract==0.3.13",
+    "pillow==10.4.0",
+    "pandas==2.2.3",
+    "pydantic==2.9.2",
+    "ollama==0.3.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.3",
+    "pytest-cov==5.0.0",
+]
+# Only needed to arm the Anthropic side of the covenant-parser fallback.
+# Groq needs nothing extra (stdlib HTTP), and with no API key configured
+# the pipeline never reaches either path.
+cloud = [
+    "anthropic>=0.69",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

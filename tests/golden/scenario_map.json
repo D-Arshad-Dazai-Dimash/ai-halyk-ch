@@ -1,0 +1,122 @@
+{
+  "B1": {
+    "account_id": "ACC-7201",
+    "effective_contract_filename": "b38facf69a94.pdf",
+    "effective_contract_hash": "99c622d15aa06535c2b4dcc2f966efa71ec3c9abee401f3899094b13d69cbf99",
+    "period_start": "2025-01-01",
+    "period_end": "2025-12-31",
+    "superseded_filenames": [
+      "b084add0e80a.pdf"
+    ]
+  },
+  "B4": {
+    "account_id": "ACC-7204",
+    "effective_contract_filename": "bc5451f75caf.pdf",
+    "effective_contract_hash": "61eebff3e1d82483c05edd388cd16d66ebd2f0195a44874739b9c5d955554d6c",
+    "period_start": "2025-01-01",
+    "period_end": "2025-12-31",
+    "superseded_filenames": [
+      "e16b5e6532b5.pdf"
+    ]
+  },
+  "P1": {
+    "account_id": "ACC-7801",
+    "effective_contract_filename": "8d878af064f2.pdf",
+    "effective_contract_hash": "2f4313a7f7258f69ae8b038190b92fdd2bda0d340e5dc5842d5a8676fb1b53ee",
+    "period_start": "2025-01-01",
+    "period_end": "2025-12-31",
+    "superseded_filenames": [
+      "6dd84ab9ef0e.pdf"
+    ]
+  },
+  "P10": {
+    "account_id": "ACC-7810",
+    "effective_contract_filename": "ba475cfc33a4.pdf",
+    "effective_contract_hash": "338c0388dba46ba0cc7587ff77880ce08ca32753878dc7824f6d76cbdaf991a5",
+    "period_start": "2025-01-01",
+    "period_end": "2025-12-31",
+    "superseded_filenames": [
+      "a2ca5ce24acb.pdf"
+    ]
+  },
+  "P2": {
+    "account_id": "ACC-7802",
+    "effective_contract_filename": "b2519c8e3ea4.pdf",
+    "effective_contract_hash": "873431203ce3c5cffae0562583cdea84ba37fd461fb8e95e2805d4dd1cb75af8",
+    "period_start": "2025-01-01",
+    "period_end": "2025-12-31",
+    "superseded_filenames": [
+      "5f1aff0e8590.pdf"
+    ]
+  },
+  "P3": {
+    "account_id": "ACC-7803",
+    "effective_contract_filename": "85afaaca89ad.pdf",
+    "effective_contract_hash": "24941e7062a77ce02b01b432185feb8da1aee1740974414c385b6e388b2973e3",
+    "period_start": "2025-01-01",
+    "period_end": "2025-12-31",
+    "superseded_filenames": [
+      "ffb3a98e3733.pdf"
+    ]
+  },
+  "P4": {
+    "account_id": "ACC-7804",
+    "effective_contract_filename": "3a4aa2dbd6c4.pdf",
+    "effective_contract_hash": "f8fbcc4087a0d0d0819a601ea14b96d88c90048889df568a1a4fa3d3a4deeea8",
+    "period_start": "2025-01-01",
+    "period_end": "2025-12-31",
+    "superseded_filenames": [
+      "aaff7bd53ea8.pdf"
+    ]
+  },
+  "P5": {
+    "account_id": "ACC-7805",
+    "effective_contract_filename": "1d262694c308.pdf",
+    "effective_contract_hash": "6c8429db788987eca58ce761974d07c0e43cd3244b0f1de0989ed675a2345afb",
+    "period_start": "2025-01-01",
+    "period_end": "2025-12-31",
+    "superseded_filenames": [
+      "c10ebf055fa5.pdf"
+    ]
+  },
+  "P6": {
+    "account_id": "ACC-7806",
+    "effective_contract_filename": "be7c1bba8940.pdf",
+    "effective_contract_hash": "0fcbbff530106072735a65a2df95eb1928f289c1ce38816291478a6c172fcb38",
+    "period_start": "2025-01-01",
+    "period_end": "2025-12-31",
+    "superseded_filenames": [
+      "3c7841365bf3.pdf"
+    ]
+  },
+  "P7": {
+    "account_id": "ACC-7807",
+    "effective_contract_filename": "6acb5bbc3e70.pdf",
+    "effective_contract_hash": "90f524d6bf2fadce960583270cc985017a62b60e6634976fadd3305e4becd301",
+    "period_start": "2025-01-01",
+    "period_end": "2025-12-31",
+    "superseded_filenames": [
+      "ad991140ab81.pdf"
+    ]
+  },
+  "P8": {
+    "account_id": "ACC-7808",
+    "effective_contract_filename": "61dfc54675dc.pdf",
+    "effective_contract_hash": "bef5b7fa4de8f44f42145caacf8d6d4183d0ced54459f94e3c2915ec2d220800",
+    "period_start": "2025-01-01",
+    "period_end": "2025-12-31",
+    "superseded_filenames": [
+      "edfab0e95f79.pdf"
+    ]
+  },
+  "P9": {
+    "account_id": "ACC-7809",
+    "effective_contract_filename": "c2c9382c9168.pdf",
+    "effective_contract_hash": "6021dc941476b6c5505cd9ee36314ae4f1a149b3d5cb9d4cfa5e88fdd23acaff",
+    "period_start": "2025-01-01",
+    "period_end": "2025-12-31",
+    "superseded_filenames": [
+      "832e580c962f.pdf"
+    ]
+  }
+}

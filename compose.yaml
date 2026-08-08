@@ -1,0 +1,56 @@
+# Hardened offline profile.
+#
+# The agent needs no network: OCR is local, and with no API key configured
+# the covenant-parser fallback never runs. Denying egress outright makes
+# that guarantee enforceable rather than assumed, and means a document can
+# never cause an outbound request.
+#
+# To arm the fallback, run the `covenant-agent-online` service below
+# instead. It is a deliberate second service rather than a flag on this
+# one: dropping `network_mode: none` weakens the strongest containment
+# this setup has, and that should never happen by default.
+
+services:
+  covenant-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: covenant-agent:latest
+
+    network_mode: "none"
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+
+    volumes:
+      # Inputs are mounted read-only so a run cannot modify the dataset.
+      - ${HALYK_DATASET_DIR:?set HALYK_DATASET_DIR to the dataset directory}:/data/input:ro
+      - ${HALYK_OUTPUT_DIR:?set HALYK_OUTPUT_DIR to a writable output directory}:/data/output
+      # Derived caches (page renders, OCR text) live outside the read-only
+      # application tree; they are regenerable and carry no authority.
+      - covenant-cache:/data/cache
+
+    tmpfs:
+      - /tmp:size=512m
+
+    environment:
+      COVENANT_AGENT_DATASET_DIR: /data/input
+
+  # Same container, same read-only tree and dropped capabilities -- egress
+  # is the only difference, and it exists solely so a clause the parser
+  # cannot compile can be read by a model. Requires a profile, so it is
+  # never what `docker compose up` starts:
+  #   docker compose --profile online run --rm covenant-agent-online
+  covenant-agent-online:
+    profiles: ["online"]
+    extends:
+      service: covenant-agent
+    network_mode: "bridge"
+    environment:
+      COVENANT_AGENT_DATASET_DIR: /data/input
+      # Passed through from the host; never baked into the image.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+
+volumes:
+  covenant-cache:

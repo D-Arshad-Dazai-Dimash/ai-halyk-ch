@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Tesseract + Russian language data
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-rus
+
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      # Ollama-dependent tests skip cleanly (pytest.skip) when no local LLM
+      # server is reachable, which is the case on this runner -- everything
+      # else (unit, golden, adversarial, GT non-leakage guard, and the
+      # tesseract-only OCR smoke test) runs for real.
+      - name: Run test suite
+        run: pytest -v
+
+      - name: GT non-leakage guard (always runs, redundant safety check)
+        run: pytest -v tests/unit/test_no_gt_leakage.py

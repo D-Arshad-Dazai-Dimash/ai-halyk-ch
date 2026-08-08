@@ -1,0 +1,23 @@
+{
+  "6.1": {
+    "status": "BREACH",
+    "actual": "0.10",
+    "evidence_txn_id": "TXN-P6-0040",
+    "resolved": true,
+    "notes": []
+  },
+  "6.2": {
+    "status": "COMPLIANT",
+    "actual": "3.64",
+    "evidence_txn_id": "TXN-P6-0031",
+    "resolved": true,
+    "notes": []
+  },
+  "6.3": {
+    "status": "COMPLIANT",
+    "actual": "1482663.28",
+    "evidence_txn_id": null,
+    "resolved": true,
+    "notes": []
+  }
+}

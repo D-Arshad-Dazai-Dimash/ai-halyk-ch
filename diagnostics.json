@@ -1,0 +1,25 @@
+{
+  "document_types": {
+    "other": 145,
+    "kyc_dossier": 12,
+    "loan_agreement": 24,
+    "agreed_upon_procedures": 6,
+    "treasury_memo": 1,
+    "financial_statement_notes": 12
+  },
+  "lifecycles": {
+    "unknown": 145,
+    "current": 37,
+    "draft": 5,
+    "superseded": 12,
+    "final": 1
+  },
+  "scenarios_without_account": [],
+  "authority_warnings": [],
+  "uncompiled_clauses": [],
+  "model_assisted_clauses": [],
+  "model_rejections": [],
+  "models_used": [],
+  "unresolved_cells": [],
+  "clean": true
+}

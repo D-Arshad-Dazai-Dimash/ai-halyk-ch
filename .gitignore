@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Secrets / env
+.env
+.env.*
+# ...except the key-less template the setup instructions tell you to copy.
+!.env.example
+
+# Caches (regenerable; embed document content, so never committed)
+data/renders/
+data/ocr/
+data/categories/
+data/llm/
+*.cache.json
+
+# audit_out/ and submission.json are deliberately NOT ignored: the public
+# run's answers and their per-scenario audit records are committed as
+# evidence of the result. Both are small and contain no document text --
+# only compiled verdicts, figures, and evidence transaction ids.
+
+# Large offline assets (fetched by setup, not committed)
+tessdata/*.traineddata
+
+# Calibration outputs (never consumed by production; keep local)
+calibration/out/
+calibration/*.report.json
+
+# Run report: records absolute input/output paths, so it is machine-specific
+# and would publish the local filesystem layout. Regenerate with --report.
+run-report.json
+
+# OS junk
+Thumbs.db
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
