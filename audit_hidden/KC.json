@@ -12,7 +12,8 @@
     "evidence_txn_id": null,
     "resolved": false,
     "notes": [
-      "clause_not_compiled"
+      "metric_unresolved",
+      "clause_compiled_by_model"
     ]
   },
   "6.3": {

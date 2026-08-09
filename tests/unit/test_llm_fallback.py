@@ -295,6 +295,76 @@ class TestCompilerBehaviour:
         # Only the model that actually answered may be declared.
         assert compiler.models_used == {"live-model"}
 
+    def test_section_attempt_anchors_against_the_whole_section(self, monkeypatch):
+        # The second attempt exists because a clause's own segment can be a
+        # fragment -- OCR scatters conditional covenants, and a threshold may
+        # be a defined term stated elsewhere. The anchor moves with it: the
+        # figure must appear in the section, not merely be plausible.
+        section = (
+            "Пункт 6.4 Условный лимит капитальных затрат. Если Коэффициент "
+            "долговой нагрузки превышает 2.40х ... Пункт 6.5 ... Указанный "
+            "лимит Капитальных затрат составляет $1,800,000.00."
+        )
+        compiler = _stub_compiler(
+            monkeypatch,
+            {
+                "comparator": "<=",
+                "unit": "USD",
+                "threshold": "1800000",
+                "expression": {"type": "metric", "name": "capital_expenditures"},
+            },
+        )
+        covenant = compiler.compile_from_section(
+            "6.4", section, "2025-01-01", "2025-12-31"
+        )
+        assert covenant is not None
+        assert covenant.threshold == Decimal("1800000")
+
+    def test_section_attempt_still_rejects_an_unanchored_threshold(self, monkeypatch):
+        compiler = _stub_compiler(
+            monkeypatch,
+            {
+                "comparator": "<=",
+                "unit": "USD",
+                "threshold": "9900000",
+                "expression": {"type": "metric", "name": "capital_expenditures"},
+            },
+        )
+        assert (
+            compiler.compile_from_section(
+                "6.4", "Пункт 6.4 ... лимит $1,800,000.00.", "2025-01-01", "2025-12-31"
+            )
+            is None
+        )
+        assert compiler.rejections
+
+    def test_the_two_attempts_do_not_share_a_cache_entry(self, monkeypatch):
+        # Same clause number and same text, different question -- a shared
+        # key would serve the segment answer to the section attempt.
+        seen: list[str] = []
+
+        def complete(_provider, *, task_instructions, **_kwargs):
+            seen.append(task_instructions[:40])
+            return RATIO_PROPOSAL
+
+        monkeypatch.setattr(llm_fallback, "complete_json", complete)
+        monkeypatch.setattr(
+            llm_fallback,
+            "detect_providers",
+            lambda: [Provider("stub", "stub-model", "key")],
+        )
+        keys: list[str] = []
+        monkeypatch.setattr(
+            llm_fallback,
+            "cached_json",
+            lambda key, compute: (keys.append(key), compute())[1],
+        )
+        compiler = FallbackCompiler.create()
+        compiler.compile("6.1", CLAUSE, "2025-01-01", "2025-12-31")
+        compiler.compile_from_section("6.1", CLAUSE, "2025-01-01", "2025-12-31")
+        assert len(set(keys)) == 2, keys
+        assert len(seen) == 2 and seen[0] != seen[1]
+
     def test_stops_at_the_call_budget(self, monkeypatch):
         monkeypatch.setattr(llm_fallback, "MODEL_FALLBACK_MAX_CALLS", 2)
         compiler = _stub_compiler(monkeypatch, RATIO_PROPOSAL)

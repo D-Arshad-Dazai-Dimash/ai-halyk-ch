@@ -119,6 +119,46 @@ the clause measures the group/holding rather than the borrower alone.
 "period": "fourth_quarter" or "period_end" only when the clause says so."""
 
 
+def section_task_instructions(clause_number: str) -> str:
+    """Instructions for the second attempt, which reads the whole section.
+
+    The model is pointed at one clause by number and told the section may
+    present it out of order or state its limit as a defined term -- the two
+    reasons the clause's own segment was not enough.
+    """
+    return f"""The document content is the FINANCIAL COVENANTS SECTION of a
+corporate credit agreement, as produced by OCR (so letters may be substituted
+between Cyrillic and Latin lookalikes, and passages may appear out of their
+printed order).
+
+Describe ONLY the clause numbered {clause_number}. Ignore every other clause
+in the section.
+
+That clause may be split: its heading and opening words may sit in one place
+while the rest of its sentence, including the figure it limits, appears
+elsewhere in the section. Read the whole section and reassemble that clause
+before describing it.
+
+If clause {clause_number} states its limit as a defined term rather than a
+figure (for example "the Permitted Amount"), find where the section defines
+that term and report the figure stated there.
+
+Rules:
+- Report ONLY what clause {clause_number} requires. Do not merge in a limit
+  belonging to a different clause.
+- Copy the threshold exactly as the section writes it, as a plain number (no
+  currency symbol, no thousands separators, dot as the decimal point). A limit
+  written as a multiple such as '0,08x' is unit 'ratio'; a percentage is unit
+  'ratio' expressed as a decimal fraction; a money amount is unit 'USD'.
+- Use ONLY metric names from the allowed list. If the clause measures
+  something no listed metric names, return {{"unsupported": true}}.
+- If you cannot locate clause {clause_number}, or its limit is not stated
+  anywhere in this section, return {{"unsupported": true}} rather than
+  guessing.
+- Perform no arithmetic: never add, divide, convert a currency, or compare
+  anything to the threshold yourself."""
+
+
 class Rejected(Exception):
     """The model's proposal did not survive validation."""
 
@@ -160,13 +200,64 @@ class FallbackCompiler:
         caller's cell then stays unresolved exactly as it would have
         without a model.
         """
-        flat = " ".join(clause_text.split())
+        return self._attempt(
+            clause_number, clause_text, period_start, period_end, TASK_INSTRUCTIONS
+        )
+
+    def compile_from_section(
+        self,
+        clause_number: str,
+        section_text: str,
+        period_start: str,
+        period_end: str,
+    ) -> Covenant | None:
+        """Second attempt, reading the whole covenants section.
+
+        A clause's own segment is not always self-contained. OCR scatters
+        conditional covenants -- the opening sits under its heading while
+        the operative limit lands after a later clause -- so the segment
+        handed to the first attempt is a fragment with no threshold in it.
+        A threshold may also be a defined term ("the Permitted Amount")
+        whose value is stated elsewhere in the section.
+
+        Both are recoverable from the section as a whole. The threshold
+        stays anchored, just to the section's text rather than to the
+        fragment's, so a figure still has to be written somewhere in the
+        covenants the borrower actually agreed to.
+        """
+        return self._attempt(
+            clause_number,
+            section_text,
+            period_start,
+            period_end,
+            section_task_instructions(clause_number),
+            cache_tag="section",
+        )
+
+    def _attempt(
+        self,
+        clause_number: str,
+        text: str,
+        period_start: str,
+        period_end: str,
+        instructions: str,
+        cache_tag: str = "clause",
+    ) -> Covenant | None:
+        flat = " ".join(text.split())
 
         for provider in self.providers:
             if self.calls_made >= MODEL_FALLBACK_MAX_CALLS:
                 return None
 
-            covenant = self._ask(provider, clause_number, flat, period_start, period_end)
+            covenant = self._ask(
+                provider,
+                clause_number,
+                flat,
+                period_start,
+                period_end,
+                instructions,
+                cache_tag,
+            )
             if covenant is not None:
                 self.models_used.add(provider.label)
                 return covenant
@@ -179,7 +270,13 @@ class FallbackCompiler:
         flat: str,
         period_start: str,
         period_end: str,
+        instructions: str,
+        cache_tag: str,
     ) -> Covenant | None:
+        # The tag separates the two attempts in the cache *filename* only.
+        # Folding it into the hash as well would change every existing key
+        # and silently discard answers already paid for -- which, against a
+        # provider quota, means losing them for the rest of the day.
         key = hashlib.sha256(
             f"{provider.model}\n{clause_number}\n{flat}".encode("utf-8")
         ).hexdigest()
@@ -188,13 +285,13 @@ class FallbackCompiler:
             self.calls_made += 1
             return complete_json(
                 provider,
-                task_instructions=TASK_INSTRUCTIONS,
+                task_instructions=instructions,
                 schema_description=SCHEMA_DESCRIPTION,
                 untrusted_document_text=flat,
             )
 
         try:
-            proposal = cached_json(f"clause-{key}", ask)
+            proposal = cached_json(f"{cache_tag}-{key}", ask)
         except ModelUnavailable as exc:
             self.rejections.append(f"{clause_number} via {provider.name}: {exc}")
             return None

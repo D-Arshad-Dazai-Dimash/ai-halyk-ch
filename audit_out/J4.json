@@ -1,0 +1,29 @@
+{
+  "5.1": {
+    "status": "COMPLIANT",
+    "actual": "0",
+    "evidence_txn_id": null,
+    "resolved": false,
+    "notes": [
+      "clause_not_compiled"
+    ]
+  },
+  "5.2": {
+    "status": "COMPLIANT",
+    "actual": "0",
+    "evidence_txn_id": null,
+    "resolved": false,
+    "notes": [
+      "clause_not_compiled"
+    ]
+  },
+  "5.3": {
+    "status": "COMPLIANT",
+    "actual": "0",
+    "evidence_txn_id": null,
+    "resolved": false,
+    "notes": [
+      "clause_not_compiled"
+    ]
+  }
+}

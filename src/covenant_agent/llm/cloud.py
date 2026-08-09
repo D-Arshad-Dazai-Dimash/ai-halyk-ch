@@ -96,15 +96,32 @@ def detect_providers() -> list[Provider]:
     if choice in {"off", "none", "disabled"}:
         return []
 
-    candidates = [
-        ("anthropic", ANTHROPIC_MODEL, os.environ.get("ANTHROPIC_API_KEY", "").strip()),
-        ("groq", GROQ_MODEL, os.environ.get("GROQ_API_KEY", "").strip()),
-    ]
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    groq_key = os.environ.get("GROQ_API_KEY", "").strip()
+
+    candidates: list[tuple[str, str, str]] = []
+    for model in _model_list(ANTHROPIC_MODEL):
+        candidates.append(("anthropic", model, anthropic_key))
+    for model in _model_list(GROQ_MODEL):
+        candidates.append(("groq", model, groq_key))
+
     return [
         Provider(name, model, key)
         for name, model, key in candidates
         if key and choice in {"auto", name}
     ]
+
+
+def _model_list(setting: str) -> list[str]:
+    """Models to try for one provider, in order.
+
+    A provider setting may name several models ("a,b"): quotas are metered
+    per model, so a second name is a live route when the first is spent.
+    Order matters -- the first is asked first, and answers are cached per
+    model, so a preferred model's existing answers are reused rather than
+    re-earned.
+    """
+    return [name.strip() for name in (setting or "").split(",") if name.strip()]
 
 
 def complete_json(

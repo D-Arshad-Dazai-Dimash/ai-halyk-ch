@@ -1,7 +1,7 @@
 {
   "team": "Again",
   "contact_email": "amantajaan506@gmail.com",
-  "model": "llama-3.3-70b-versatile",
+  "model": "llama-3.3-70b-versatile, openai/gpt-oss-120b",
   "answers": {
     "S1": {
       "6.1": {

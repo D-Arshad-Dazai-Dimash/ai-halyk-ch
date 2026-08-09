@@ -158,7 +158,14 @@ def _compile_covenants(
     ).items():
         covenant = parse_clause(number, text, f"{year}-01-01", f"{year}-12-31")
         if covenant is None and fallback is not None:
-            covenant = fallback.compile(number, text, f"{year}-01-01", f"{year}-12-31")
+            start, end = f"{year}-01-01", f"{year}-12-31"
+            covenant = fallback.compile(number, text, start, end)
+            if covenant is None:
+                # The clause's own segment was not self-contained: OCR can
+                # scatter a conditional covenant across the section, and a
+                # threshold may be a defined term stated elsewhere. Re-ask
+                # against the whole section before giving the cell up.
+                covenant = fallback.compile_from_section(number, section, start, end)
             if covenant is not None:
                 model_assisted.add(number)
         if covenant is not None:
