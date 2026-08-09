@@ -279,6 +279,49 @@ _RELATED_THRESHOLD = re.compile(
     + ru("связанным") + r"\w*\s+" + ru("сторон")
 )
 
+# "Контрагент «Altyn Capital L.L.P.» классифицирован как АФФИЛИРОВАННОЕ
+#  ЛИЦО Заёмщика" -- the dossier states the conclusion rather than the
+#  holdings it was reached from. The name is taken from the quotation marks
+#  so a trailing corporate form ("L.L.P.") is not truncated by a full stop.
+_DECLARED_RELATED_PARTY = re.compile(
+    ru("контрагент") + r"\w*\s*[«\"']([^»\"']{2,80})[»\"']"
+    r"[^.]{0,120}?"
+    r"(?:" + ru("аффилирован") + r"|" + ru("связанн") + r")\w*"
+)
+
+#: Ownership thresholds are sometimes written as a fraction in words rather
+#: than a percentage ("не менее одной четверти голосующих прав"). The
+#: dossier means the same test either way, and a borrower whose threshold is
+#: worded has no related parties at all if only digits are read.
+_WORDED_FRACTIONS: tuple[tuple[str, Decimal], ...] = (
+    (ru("одной десятой"), Decimal("10")),
+    (ru("одной пятой"), Decimal("20")),
+    (ru("одной четверти"), Decimal("25")),
+    (ru("двух десятых"), Decimal("20")),
+    (ru("трех десятых"), Decimal("30")),
+    (ru("трёх десятых"), Decimal("30")),
+    (ru("одной трети"), Decimal("33.3")),
+    (ru("одной третьей"), Decimal("33.3")),
+    (ru("двух пятых"), Decimal("40")),
+    (ru("четырех десятых"), Decimal("40")),
+    (ru("половины"), Decimal("50")),
+)
+
+_WORDED_RELATED_THRESHOLD = re.compile(
+    ru("не менее") + r"\s+(" + "|".join(word for word, _ in _WORDED_FRACTIONS) + r")"
+    r"[^.]{0,140}?" + ru("связанным") + r"\w*\s+" + ru("сторон")
+)
+
+#: "Доля в <A> удерживается косвенно через <B>; Группе принадлежит 26.0%
+#: голосующих прав в <B>. ... учитывается эффективная доля Группы."
+#: The holding in A is then the product of the two, not the stated figure.
+_INDIRECT_HOLDING = re.compile(
+    ru("доля") + r"\s+" + ru("в") + r"\s+(.{2,60}?)\s+"
+    + ru("удерживается") + r"\s+" + ru("косвенно")
+    + r"[^.]{0,200}?([0-9]+(?:\.[0-9]+)?)\s*%"
+)
+
+
 # "Дочерние организации, в которых доля ... ниже 50.0%, признаются
 #  Неограниченными дочерними организациями"
 _UNRESTRICTED_THRESHOLD = re.compile(
@@ -312,12 +355,32 @@ def extract_ownership_facts(text: str, source: str) -> DocumentFacts:
             found.append((name, Decimal(row.group(2))))
         return found
 
+    threshold = None
     related_match = _RELATED_THRESHOLD.search(folded)
     if related_match:
         threshold = Decimal(related_match.group(1))
-        facts.related_parties.extend(
-            name for name, percent in rows(0, boundary) if percent >= threshold
-        )
+    else:
+        worded = _WORDED_RELATED_THRESHOLD.search(folded)
+        if worded:
+            threshold = next(
+                value for word, value in _WORDED_FRACTIONS if word == worded.group(1)
+            )
+
+    if threshold is not None:
+        # An indirect holding counts at its effective size when the dossier
+        # says so: a 61% stake held through a vehicle the group owns 26% of
+        # is a 15.9% interest, below every threshold in the corpus.
+        effective: dict[str, Decimal] = {}
+        for indirect in _INDIRECT_HOLDING.finditer(folded):
+            held = text[indirect.start(1) : indirect.end(1)].strip()
+            effective[canon(held)] = Decimal(indirect.group(2)) / Decimal(100)
+
+        for name, percent in rows(0, boundary):
+            factor = effective.get(canon(name))
+            if factor is not None:
+                percent = percent * factor
+            if percent >= threshold:
+                facts.related_parties.append(name)
 
     unrestricted_match = _UNRESTRICTED_THRESHOLD.search(folded[boundary:])
     if unrestricted_match:
@@ -325,6 +388,17 @@ def extract_ownership_facts(text: str, source: str) -> DocumentFacts:
         facts.unrestricted_subsidiaries.extend(
             name for name, percent in rows(boundary, len(text)) if percent < threshold
         )
+
+    # Some dossiers state the conclusion instead of the arithmetic: rather
+    # than a table of holdings and a percentage test, they name the
+    # counterparty and record the classification reached ("Контрагент «X»
+    # классифицирован как АФФИЛИРОВАННОЕ ЛИЦО"). That is the same fact, so
+    # it is read the same way -- a dossier written this way otherwise
+    # yields no related parties at all and the covenant measures nothing.
+    for declared in _DECLARED_RELATED_PARTY.finditer(folded):
+        name = text[declared.start(1) : declared.end(1)].strip()
+        if name and name not in facts.related_parties:
+            facts.related_parties.append(name)
 
     _ = source
     return facts
