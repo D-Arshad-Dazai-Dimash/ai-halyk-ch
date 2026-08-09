@@ -53,7 +53,10 @@ DATE_RANGE_RE = re.compile(r"(\d{4}-\d{2}-\d{2})\s+" + ru("по") + r"\s+(\d{4}-
 #: 5.1") captures its number too -- without that, the number is invisible
 #: and the reference is indistinguishable from a heading.
 CLAUSE_HEADING_RE = re.compile(
-    r"(?:" + ru("пункт") + r"\w*|section|article)[_\s]*(\d+\.\d+)?"
+    # The inflection is letters only. A bare ``\w*`` also eats digits and
+    # the underscore OCR leaves behind ("Пункт_6.2"), swallowing the very
+    # number the group is meant to capture.
+    r"(?:" + ru("пункт") + r"[^\W\d_]*|section|article)[_\s]*(\d+\.\d+)?"
 )
 SENTENCE_END_RE = re.compile(r"\.\s")
 
@@ -250,8 +253,18 @@ def split_clauses(
     clauses: dict[str, str] = {}
     position = 0
     for segment in segments:
-        printed = CLAUSE_HEADING_RE.search(canon(segment))
-        number = printed.group(1) if printed else None
+        # A number belonging to another article is a cross-reference, not
+        # this segment's own heading. Labelling by it files the clause under
+        # a key the template never asks for, so the cell reads as missing
+        # while the text that would answer it sits right there.
+        number = next(
+            (
+                match.group(1)
+                for match in CLAUSE_HEADING_RE.finditer(canon(segment))
+                if match.group(1) and match.group(1).split(".")[0] == article
+            ),
+            None,
+        )
         if number:
             position = int(number.split(".")[1])
         else:
