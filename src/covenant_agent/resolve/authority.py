@@ -29,6 +29,7 @@ from covenant_agent.documents.doctype import (
     build_signals,
     classify_lifecycle,
     classify_type,
+    DEFAULT_ACCOUNT_PREFIXES,
     extract_accounts,
     extract_audit_report_ids,
 )
@@ -64,7 +65,13 @@ class AuthorityBundle:
         return self.selections.get(purpose)
 
 
-def catalog_document(path: Path, content_hash: str, text: str, year_hint: int | None = None) -> CatalogedDocument:
+def catalog_document(
+    path: Path,
+    content_hash: str,
+    text: str,
+    year_hint: int | None = None,
+    account_prefixes: tuple[str, ...] = DEFAULT_ACCOUNT_PREFIXES,
+) -> CatalogedDocument:
     signals = build_signals(text)
     doc_type = classify_type(signals)
     return CatalogedDocument(
@@ -72,7 +79,7 @@ def catalog_document(path: Path, content_hash: str, text: str, year_hint: int | 
         content_hash=content_hash,
         doc_type=doc_type,
         lifecycle=classify_lifecycle(doc_type, signals),
-        accounts=extract_accounts(text),
+        accounts=extract_accounts(text, account_prefixes),
         audit_report_ids=extract_audit_report_ids(text),
         reporting_year=year_hint,
         text=text,

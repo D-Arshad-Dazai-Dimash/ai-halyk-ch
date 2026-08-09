@@ -41,8 +41,16 @@ MONEY_RE = re.compile(r"\$\s*([0-9][0-9,]*(?:\.[0-9]+)?)")
 # A ratio multiple: "9.00x" / "0.42х" -- the trailing letter may be the
 # Latin or Cyrillic glyph, both fold to "x".
 RATIO_RE = re.compile(r"(?<![0-9])([0-9]+(?:\.[0-9]+)?)\s*x\b")
+#: The same limit written as a percentage of another metric ("не превышали
+#: 80 процентов совокупной выручки"). It is a ratio, just stated per
+#: hundred, so the value is divided down rather than treated as a multiple.
+PERCENT_RE = re.compile(
+    r"(?<![0-9])([0-9]+(?:[.,][0-9]+)?)\s*(?:%|" + ru("процент") + r"\w*)"
+)
 DATE_RANGE_RE = re.compile(r"(\d{4}-\d{2}-\d{2})\s+" + ru("по") + r"\s+(\d{4}-\d{2}-\d{2})")
-CLAUSE_HEADING_RE = re.compile(ru("пункт") + r"[_\s]*(\d+\.\d+)?")
+CLAUSE_HEADING_RE = re.compile(
+    r"(?:" + ru("пункт") + r"|section|article)[_\s]*(\d+\.\d+)?"
+)
 SENTENCE_END_RE = re.compile(r"\.\s")
 
 #: Cost nouns that confirm an adjective refers to an expense caption rather
@@ -97,8 +105,26 @@ _ADJUSTED_WORD = re.compile(ru("скорректированн"))
 _Q4_WORD = re.compile(ru("четверт") + r"\w*\s+(?:" + ru("финансов") + r"\w*\s+)?" + ru("квартал"))
 _SPRINGING_WORD = re.compile(ru("только при условии"))
 
-_MIN_COMPARATOR_TERMS = (ru("не менее"), ru("не ниже"), ru("снижения"))
+_MIN_COMPARATOR_TERMS = (
+    ru("не менее"),
+    ru("не ниже"),
+    ru("снижения"),
+    # Some borrowers are documented entirely in English, stating the same
+    # covenants with the same structure.
+    "no less than",
+    "not less than",
+    "at least",
+    "minimum",
+)
 _MAX_COMPARATOR_TERMS = (
+    # Stems, not inflected forms. A cap is written a dozen ways -- "не
+    # превышало", "не допускать превышения", "превышающую", "не превысят",
+    # "допускает превышение" -- and enumerating surface forms loses the one
+    # that was not anticipated. A minimum clause that mentions "превышает"
+    # inside its own definition still resolves correctly, because a clause
+    # carrying both directions is read as the floor it states.
+    ru("превыш"),
+    ru("превыс"),
     ru("не превыш"),
     ru("превышал"),
     ru("превышали"),
@@ -111,6 +137,12 @@ _MAX_COMPARATOR_TERMS = (
     ru("ограничение"),
     ru("не должен превыш"),
     ru("потолок"),
+    "shall not permit",
+    "not exceed",
+    "to exceed",
+    "exceeds",
+    "exceeding",
+    "maximum",
 )
 
 
@@ -399,7 +431,10 @@ def _parse_ratio(clause_folded: str, mentions: list[MetricMention]) -> Expressio
         numerator_region = (ratio_word, separator.start())
         denominator_region = (separator.end(), _sentence_end(clause_folded, separator.end()))
     else:
-        multiple = RATIO_RE.search(clause_folded)
+        # The implicit form separates the two sides with the limit itself,
+        # written either as a multiple ("... превышал 0.08х <denominator>")
+        # or as a percentage ("... не превышали 80 процентов <denominator>").
+        multiple = RATIO_RE.search(clause_folded) or PERCENT_RE.search(clause_folded)
         if multiple is None:
             return None
         # Implicit form: the subject is the metric named closest before the
@@ -488,9 +523,15 @@ def parse_clause(
     threshold_area = folded[: springing.start()] if springing else folded
 
     ratio_match = RATIO_RE.search(threshold_area)
+    percent_match = PERCENT_RE.search(threshold_area)
     if ratio_match:
         unit = Unit.RATIO
         threshold = _decimal(ratio_match.group(1))
+    elif percent_match:
+        # A percentage of another metric is a ratio stated per hundred.
+        unit = Unit.RATIO
+        stated = _decimal(percent_match.group(1).replace(",", "."))
+        threshold = None if stated is None else stated / Decimal(100)
     else:
         money_match = MONEY_RE.search(threshold_area)
         if not money_match:

@@ -7,7 +7,13 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
-TXN_ID_SCENARIO_PATTERN = re.compile(r"^TXN-([A-Z0-9]+)-(\d+)$")
+#: ``TXN-<scenario>-<rest>``. Only the scenario segment carries meaning; the
+#: remainder is an opaque per-row identifier whose shape varies across
+#: borrowers -- a plain sequence number for most, but segmented forms like
+#: ``TXN-KC-CAP-29`` also occur. Anchoring on "digits to the end" would
+#: reject those rows outright, and a dropped row silently understates the
+#: covenant metric it belonged to, so the tail is deliberately unconstrained.
+TXN_ID_SCENARIO_PATTERN = re.compile(r"^TXN-([A-Za-z0-9]+)-(\S+)$")
 
 
 class RawTransaction(BaseModel):

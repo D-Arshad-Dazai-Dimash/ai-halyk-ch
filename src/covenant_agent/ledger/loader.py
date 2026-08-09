@@ -32,7 +32,9 @@ def _parse_amount(raw: str) -> Decimal | None:
         raise ValueError(f"malformed amount {raw!r}") from exc
 
 
-def load_ledger(csv_path: Path) -> list[RawTransaction]:
+def load_ledger(
+    csv_path: Path, skipped_out: list[str] | None = None
+) -> list[RawTransaction]:
     """Parse the ledger CSV into validated RawTransaction rows.
 
     A blank amount is preserved as an unresolved row (``amount=None``), not
@@ -43,7 +45,10 @@ def load_ledger(csv_path: Path) -> list[RawTransaction]:
     Rows that fail validation for any other reason (malformed txn_id,
     non-numeric amount) are skipped rather than crashing the whole load --
     a single dirty row must not take down the pipeline (ARCHITECTURE.md
-    failure boundaries).
+    failure boundaries). Skipping is reported through ``skipped_out``, not
+    swallowed: a whole borrower can share one unexpected id shape, and
+    silently dropping their rows understates every metric they appear in
+    while the run still looks clean.
     """
     if not csv_path.is_file():
         raise CovenantAgentError(f"ledger CSV not found: {csv_path}")
@@ -68,10 +73,24 @@ def load_ledger(csv_path: Path) -> list[RawTransaction]:
             except (KeyError, ValueError, TypeError) as exc:
                 skipped.append((i, str(exc)))
 
+    if skipped_out is not None:
+        skipped_out.extend(f"row {line}: {reason}" for line, reason in skipped)
+
     if not transactions:
         raise CovenantAgentError(f"no valid transactions parsed from {csv_path}")
 
     return transactions
+
+
+def account_prefixes(transactions: list[RawTransaction]) -> tuple[str, ...]:
+    """The identifier prefixes the ledger's accounts actually use.
+
+    Documents name accounts in the ledger's own vocabulary, so the ledger --
+    not a guess at the shape -- decides what counts as an account reference.
+    """
+    return tuple(
+        sorted({txn.account_id.split("-")[0] for txn in transactions if "-" in txn.account_id})
+    )
 
 
 def build_account_scenario_map(transactions: list[RawTransaction]) -> dict[str, str]:

@@ -82,8 +82,16 @@ def classify_type(signals: DocSignals) -> DocType:
     """
     candidates: list[DocType] = []
 
-    # A loan agreement is titled as one AND carries the covenants article.
-    if signals.has("договор банковского займа") and signals.has("статья 6"):
+    # A loan agreement is titled as one AND carries the covenants section.
+    # Some borrowers are documented entirely in English, with the same
+    # structure and the same decoys -- so each type is recognised in either
+    # language. Anchoring the Russian rule on "статья 6" additionally
+    # assumed the covenants are article 6; the section is identified by its
+    # title instead, which holds whatever number it carries.
+    if (
+        signals.has("договор банковского займа")
+        and (signals.has("статья 6") or signals.has("финансовые ковенанты"))
+    ) or (signals.has("credit agreement") and signals.has("financial covenants")):
         candidates.append(DocType.LOAN_AGREEMENT)
 
     # A KYC dossier carries a KYC registration ID; a compliance *procedure*
@@ -93,14 +101,25 @@ def classify_type(signals: DocSignals) -> DocType:
         candidates.append(DocType.KYC_DOSSIER)
 
     # Statement notes are titled as notes AND filed under an audit engagement.
-    if signals.has("примечания к финансовой отчетности") and signals.has("аудиторское дело"):
+    if (
+        signals.has("примечания к финансовой отчетности")
+        and signals.has("аудиторское дело")
+    ) or (
+        signals.has("notes to the financial statements") and signals.has("audit file")
+    ):
         candidates.append(DocType.FINANCIAL_STATEMENT_NOTES)
 
     # An AUP document reviews transaction classification, as either an
     # interim schedule or the final agreed-upon-procedures report.
-    if signals.has("классификации операций") and (
-        signals.has("отчет о выполнении согласованных процедур")
-        or signals.has("промежуточная ведомость")
+    if (
+        signals.has("классификации операций")
+        and (
+            signals.has("отчет о выполнении согласованных процедур")
+            or signals.has("промежуточная ведомость")
+        )
+    ) or (
+        signals.has("classification of transactions")
+        and (signals.has("agreed-upon procedures") or signals.has("interim schedule"))
     ):
         candidates.append(DocType.AGREED_UPON_PROCEDURES)
 
@@ -114,15 +133,29 @@ def classify_type(signals: DocSignals) -> DocType:
 
 def classify_lifecycle(doc_type: DocType, signals: DocSignals) -> Lifecycle:
     if doc_type is DocType.LOAN_AGREEMENT:
-        superseded = signals.has("недействующая редакция") or signals.has("не применяется")
+        # Only the document-level stamp decides. "не применяется" on its own
+        # is not a supersession marker: it is ordinary covenant language for
+        # a carve-out ("...изложенное ограничение Капитальных затрат не
+        # применяется"), and reading it as one strikes out the borrower's
+        # *current* agreement -- leaving them with no covenant terms at all
+        # rather than with the wrong ones, so the loss is silent.
+        superseded = signals.has("недействующая редакция") or signals.has(
+            "superseded prior-year agreement"
+        )
         return Lifecycle.SUPERSEDED if superseded else Lifecycle.CURRENT
 
     if doc_type is DocType.AGREED_UPON_PROCEDURES:
         # An interim schedule explicitly disclaims being the final position.
-        if signals.has("промежуточная ведомость") and signals.has("не является окончательной"):
+        if (
+            signals.has("промежуточная ведомость")
+            and signals.has("не является окончательной")
+        ) or (signals.has("interim schedule") and signals.has("not the final")):
             return Lifecycle.DRAFT
-        if signals.has("отчет о выполнении согласованных процедур") and signals.has(
-            "окончательной позицией"
+        if (
+            signals.has("отчет о выполнении согласованных процедур")
+            and signals.has("окончательной позицией")
+        ) or (
+            signals.has("agreed-upon procedures") and signals.has("final position")
         ):
             return Lifecycle.FINAL
         return Lifecycle.UNKNOWN
@@ -136,12 +169,46 @@ def classify_lifecycle(doc_type: DocType, signals: DocSignals) -> Lifecycle:
     return Lifecycle.UNKNOWN
 
 
-def extract_accounts(text: str) -> tuple[str, ...]:
-    """Account identifiers named anywhere in the document, normalized to the
-    canonical ``ACC-nnnn`` surface form used by the ledger.
+#: The prefix used when the caller does not supply the ledger's own.
+DEFAULT_ACCOUNT_PREFIXES: tuple[str, ...] = ("ACC",)
+
+
+def extract_accounts(
+    text: str, prefixes: tuple[str, ...] = DEFAULT_ACCOUNT_PREFIXES
+) -> tuple[str, ...]:
+    """Account identifiers named anywhere in the document.
+
+    ``prefixes`` comes from the ledger, which is the only authority on what
+    an account identifier looks like: most sit under ``ACC-nnnn``, but a
+    borrower's account may use another prefix entirely. Matching a generic
+    ``<letters>-<digits>`` shape instead would sweep up unrelated document
+    codes -- an audit reference like ``AR-2025-0041`` reads exactly like an
+    account under that shape -- so the set is closed to what the ledger
+    actually contains.
     """
     folded = canon(text)
-    return tuple(sorted({f"ACC-{m.group(1)}" for m in ACCOUNT_RE.finditer(folded)}))
+    # Longest first, so a prefix that is a prefix of another cannot shadow it.
+    by_folded = {canon(prefix): prefix for prefix in prefixes}
+    alternation = "|".join(
+        re.escape(folded_prefix)
+        for folded_prefix in sorted(by_folded, key=len, reverse=True)
+    )
+    if not alternation:
+        return ()
+    # No left boundary: OCR routinely glues the preceding character onto the
+    # prefix (a number sign before the identifier comes back as "Ne", giving
+    # "NeACC-nnnn"), and requiring one silently loses that borrower's entire
+    # document set. Precision comes from the closed prefix list above, not
+    # from a word boundary.
+    pattern = re.compile(rf"({alternation})-(\d{{3,6}})(?!\d)")
+    return tuple(
+        sorted(
+            {
+                f"{by_folded[m.group(1)]}-{m.group(2)}"
+                for m in pattern.finditer(folded)
+            }
+        )
+    )
 
 
 def extract_audit_report_ids(text: str) -> tuple[str, ...]:

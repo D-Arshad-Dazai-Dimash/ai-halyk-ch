@@ -1,0 +1,25 @@
+{
+  "6.1": {
+    "status": "COMPLIANT",
+    "actual": "0.00",
+    "evidence_txn_id": null,
+    "resolved": true,
+    "notes": [
+      "clause_compiled_by_model"
+    ]
+  },
+  "6.2": {
+    "status": "BREACH",
+    "actual": "6942115.28",
+    "evidence_txn_id": null,
+    "resolved": true,
+    "notes": []
+  },
+  "6.3": {
+    "status": "BREACH",
+    "actual": "261905.44",
+    "evidence_txn_id": "TXN-G3-0023",
+    "resolved": true,
+    "notes": []
+  }
+}

@@ -46,3 +46,10 @@ Thumbs.db
 # Editor
 .vscode/
 .idea/
+
+# Scratch dumps of private-dataset contract text produced while debugging.
+# The verdicts in submission_*.json are ours to publish; the corpus text is
+# not, so any extract of it stays local.
+failing_clauses.txt
+remaining5.txt
+*_clauses.txt

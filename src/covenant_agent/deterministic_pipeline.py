@@ -45,6 +45,7 @@ from covenant_agent.ingestion.discover import discover_documents, hash_documents
 from covenant_agent.ingestion.ocr_cache import ocr_document, prewarm
 from covenant_agent.evidence.decisive import find_decisive
 from covenant_agent.ledger.loader import (
+    account_prefixes,
     build_account_scenario_map,
     group_by_scenario,
     ledger_reporting_year,
@@ -71,7 +72,9 @@ class CellResult:
     notes: list[str] = field(default_factory=list)
 
 
-def _catalog(document_paths: Sequence[Path]) -> list[CatalogedDocument]:
+def _catalog(
+    document_paths: Sequence[Path], prefixes: tuple[str, ...]
+) -> list[CatalogedDocument]:
     """OCR and classify every document. A document that cannot be read is
     skipped so one damaged file cannot stop the run.
 
@@ -88,7 +91,11 @@ def _catalog(document_paths: Sequence[Path]) -> list[CatalogedDocument]:
             text = ocr_document(found.path, found.content_hash)
         except Exception:
             continue
-        catalog.append(catalog_document(found.path, found.content_hash, text))
+        catalog.append(
+            catalog_document(
+                found.path, found.content_hash, text, account_prefixes=prefixes
+            )
+        )
     return catalog
 
 
@@ -113,9 +120,22 @@ def _facts_for(bundle: AuthorityBundle) -> DocumentFacts:
     return facts
 
 
+def _article_of(clauses: Sequence[str]) -> str:
+    """The article the template's clause keys belong to ("6.1" -> "6").
+
+    The template is authoritative about which clauses are being asked for,
+    so it -- not a hardcoded number -- decides which article to read.
+    """
+    for clause in clauses:
+        head, _, _ = clause.partition(".")
+        if head.isdigit():
+            return head
+    return "6"
+
+
 def _compile_covenants(
     bundle: AuthorityBundle,
-    clauses_expected: int,
+    clauses: Sequence[str],
     year: int,
     fallback: FallbackCompiler | None = None,
 ) -> tuple[dict[str, Covenant], set[str]]:
@@ -129,10 +149,13 @@ def _compile_covenants(
     agreement = bundle.get(Purpose.COVENANT_TERMS)
     if agreement is None:
         return {}, set()
-    section = extract_covenant_section_text(agreement.text)
+    article = _article_of(clauses)
+    section = extract_covenant_section_text(agreement.text, article)
     compiled: dict[str, Covenant] = {}
     model_assisted: set[str] = set()
-    for number, text in split_clauses(section, expected=clauses_expected).items():
+    for number, text in split_clauses(
+        section, article=article, expected=len(clauses)
+    ).items():
         covenant = parse_clause(number, text, f"{year}-01-01", f"{year}-12-31")
         if covenant is None and fallback is not None:
             covenant = fallback.compile(number, text, f"{year}-01-01", f"{year}-12-31")
@@ -183,14 +206,14 @@ def run(
         else list(documents)
     )
 
-    transactions = load_ledger(ledger_csv)
+    report = diagnostics if diagnostics is not None else Diagnostics()
+    transactions = load_ledger(ledger_csv, report.skipped_ledger_rows)
     account_to_scenario = build_account_scenario_map(transactions)
     scenario_to_account = {v: k for k, v in account_to_scenario.items()}
     year = ledger_reporting_year(transactions)
     grouped = group_by_scenario(transactions)
-    catalog = _catalog(document_paths)
+    catalog = _catalog(document_paths, account_prefixes(transactions))
 
-    report = diagnostics if diagnostics is not None else Diagnostics()
     report.note_catalog(catalog)
 
     results: dict[tuple[str, str], CellResult] = {}
@@ -209,7 +232,7 @@ def run(
         report.note_authorities(scenario_id, bundle)
         facts = _facts_for(bundle)
         covenants, model_assisted = _compile_covenants(
-            bundle, len(clauses), year, fallback
+            bundle, clauses, year, fallback
         )
         rows: list[RawTransaction] = grouped.get(scenario_id, [])
 

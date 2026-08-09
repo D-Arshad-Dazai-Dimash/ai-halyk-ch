@@ -26,6 +26,7 @@ class Diagnostics:
     uncompiled_clauses: list[str] = field(default_factory=list)
     unresolved_cells: list[str] = field(default_factory=list)
     scenarios_without_account: list[str] = field(default_factory=list)
+    skipped_ledger_rows: list[str] = field(default_factory=list)
     model_assisted_clauses: list[str] = field(default_factory=list)
     model_rejections: list[str] = field(default_factory=list)
     models_used: list[str] = field(default_factory=list)
@@ -57,6 +58,7 @@ class Diagnostics:
             or self.uncompiled_clauses
             or self.unresolved_cells
             or self.scenarios_without_account
+            or self.skipped_ledger_rows
         )
 
     def render(self) -> str:
@@ -86,6 +88,7 @@ class Diagnostics:
 
         for label, items in (
             ("scenarios with no ledger account", self.scenarios_without_account),
+            ("ledger rows skipped as unreadable", self.skipped_ledger_rows),
             ("authority warnings", self.authority_warnings),
             ("clauses that did not compile", self.uncompiled_clauses),
             ("clauses compiled by a model", self.model_assisted_clauses),
@@ -112,6 +115,7 @@ class Diagnostics:
                     "document_types": dict(self.document_types),
                     "lifecycles": dict(self.lifecycles),
                     "scenarios_without_account": self.scenarios_without_account,
+                    "skipped_ledger_rows": self.skipped_ledger_rows,
                     "authority_warnings": self.authority_warnings,
                     "uncompiled_clauses": self.uncompiled_clauses,
                     "model_assisted_clauses": self.model_assisted_clauses,

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 import urllib.error
 import urllib.request
@@ -231,7 +232,7 @@ def _call_groq(provider: Provider, system: str, user: str) -> str:
             # deadline "HTTP 403" alone costs minutes that the actual
             # reason does not. The response body never contains the key.
             try:
-                detail = exc.read().decode("utf-8", "replace").strip()[:300]
+                detail = _redact(exc.read().decode("utf-8", "replace").strip())[:300]
             except Exception:
                 detail = ""
             wait = _retry_after(exc)
@@ -248,6 +249,16 @@ def _call_groq(provider: Provider, system: str, user: str) -> str:
         return body["choices"][0]["message"]["content"]
     except (KeyError, IndexError, TypeError) as exc:
         raise ModelUnavailable("Groq returned an unexpected response shape") from exc
+
+
+#: Account identifiers a provider echoes back in error bodies. They are not
+#: credentials, but diagnostics are committed as run evidence and an account
+#: id does not belong in a published artifact.
+_ACCOUNT_ID = re.compile(r"\borg_[A-Za-z0-9]+")
+
+
+def _redact(detail: str) -> str:
+    return _ACCOUNT_ID.sub("org_<redacted>", detail)
 
 
 def _retry_after(exc: urllib.error.HTTPError) -> float:
