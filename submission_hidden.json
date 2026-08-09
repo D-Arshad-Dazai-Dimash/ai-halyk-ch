@@ -57,7 +57,7 @@
     "B2": {
       "6.1": {
         "status": "COMPLIANT",
-        "actual": 0.0,
+        "actual": 1.0,
         "evidence_txn_id": null
       },
       "6.2": {
@@ -390,7 +390,7 @@
       },
       "6.3": {
         "status": "COMPLIANT",
-        "actual": 0.0,
+        "actual": 0.86,
         "evidence_txn_id": null
       }
     },
@@ -451,7 +451,7 @@
       },
       "6.4": {
         "status": "COMPLIANT",
-        "actual": 0.0,
+        "actual": 1.0,
         "evidence_txn_id": null
       }
     },

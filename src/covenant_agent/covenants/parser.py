@@ -48,8 +48,12 @@ PERCENT_RE = re.compile(
     r"(?<![0-9])([0-9]+(?:[.,][0-9]+)?)\s*(?:%|" + ru("процент") + r"\w*)"
 )
 DATE_RANGE_RE = re.compile(r"(\d{4}-\d{2}-\d{2})\s+" + ru("по") + r"\s+(\d{4}-\d{2}-\d{2})")
+#: A clause heading, with its number when the print survived OCR. The word
+#: is matched with its inflection so a cross-reference ("согласно Пункту
+#: 5.1") captures its number too -- without that, the number is invisible
+#: and the reference is indistinguishable from a heading.
 CLAUSE_HEADING_RE = re.compile(
-    r"(?:" + ru("пункт") + r"|section|article)[_\s]*(\d+\.\d+)?"
+    r"(?:" + ru("пункт") + r"\w*|section|article)[_\s]*(\d+\.\d+)?"
 )
 SENTENCE_END_RE = re.compile(r"\.\s")
 
@@ -104,6 +108,13 @@ _GROUP_WORD = re.compile(ru("группы"))
 _ADJUSTED_WORD = re.compile(ru("скорректированн"))
 _Q4_WORD = re.compile(ru("четверт") + r"\w*\s+(?:" + ru("финансов") + r"\w*\s+)?" + ru("квартал"))
 _SPRINGING_WORD = re.compile(ru("только при условии"))
+#: The other way a springing covenant is written: the trigger comes first
+#: and the limit it governs follows ("Если <ratio> превышает 2.40х, то
+#: <borrower> обязуется не допускать превышения ... $5,050,000.00"). Read
+#: without this, the trigger's own figure is nearer the front and is taken
+#: for the covenant's threshold -- a wrong number, not a failure to parse.
+_IF_WORD = re.compile(ru("если"))
+_THEN_SPLIT = re.compile(r",\s*" + ru("то") + r"\b")
 
 _MIN_COMPARATOR_TERMS = (
     ru("не менее"),
@@ -196,7 +207,17 @@ def split_clauses(
     """
     folded = canon(section_text)
 
-    boundaries = {m.start() for m in CLAUSE_HEADING_RE.finditer(folded)}
+    boundaries: set[int] = set()
+    for heading in CLAUSE_HEADING_RE.finditer(folded):
+        printed = heading.group(1)
+        if printed is not None and printed.split(".")[0] != article:
+            # A cross-reference to another article's clause ("определяемое
+            # согласно Пункту 5.1"), not a heading. Treating it as one cuts
+            # the clause in half: the condition stays, the limit it governs
+            # is lost, and what remains parses as a covenant with no
+            # threshold at all.
+            continue
+        boundaries.add(heading.start())
     article_heading = re.search(ru("статья") + r"\s*" + re.escape(article), folded)
     if article_heading:
         # Start the first clause after the whole heading line; stopping just
@@ -488,6 +509,46 @@ def _parse_comparator(clause_folded: str) -> Comparator | None:
     return None
 
 
+def _conditional_split(clause_folded: str) -> tuple[int, int, int] | None:
+    """Bounds of an "Если ..., то ..." clause: condition, then covenant.
+
+    Returns ``(condition_start, condition_end, covenant_start)`` or None
+    when the clause is not written in that form.
+    """
+    opener = _IF_WORD.search(clause_folded)
+    split = _THEN_SPLIT.search(clause_folded)
+    if opener is None or split is None or opener.start() >= split.start():
+        return None
+    return opener.end(), split.start(), split.end()
+
+
+def _applicability_from_condition(condition: str) -> Applicability | None:
+    """The trigger of an "Если ..., то ..." covenant.
+
+    The trigger is usually a ratio ("Коэффициент долговой нагрузки ...
+    превышает 2.40х"), so the whole ratio is recovered rather than the last
+    metric named -- testing EBITDA against 2.40 would pass for any borrower
+    and quietly make the covenant always binding.
+    """
+    match = RATIO_RE.search(condition) or MONEY_RE.search(condition)
+    if match is None:
+        return None
+    threshold = _decimal(match.group(1))
+    if threshold is None:
+        return None
+
+    head = condition[: match.start()]
+    expression = _parse_expression(head, Unit.RATIO)
+    if expression is None:
+        mentions = _find_mentions(head)
+        if not mentions:
+            return None
+        expression = mentions[-1].expression
+    return Applicability(
+        expression=expression, comparator=Comparator.GT, threshold=threshold
+    )
+
+
 def _parse_applicability(clause_folded: str) -> Applicability | None:
     """A springing covenant states its trigger after "только при условии"."""
     trigger = _SPRINGING_WORD.search(clause_folded)
@@ -518,9 +579,16 @@ def parse_clause(
     folded = canon(" ".join(clause_text.split()))
 
     springing = _SPRINGING_WORD.search(folded)
-    # The springing trigger carries its own amount; keep it out of the
-    # covenant's own threshold search.
-    threshold_area = folded[: springing.start()] if springing else folded
+    conditional = _conditional_split(folded) if springing is None else None
+    # The trigger carries its own figure; keep it out of the covenant's own
+    # threshold search. Which side to keep depends on the form: "только при
+    # условии" puts the trigger last, "Если ..., то ..." puts it first.
+    if conditional is not None:
+        threshold_area = folded[conditional[2] :]
+    elif springing is not None:
+        threshold_area = folded[: springing.start()]
+    else:
+        threshold_area = folded
 
     ratio_match = RATIO_RE.search(threshold_area)
     percent_match = PERCENT_RE.search(threshold_area)
@@ -557,6 +625,11 @@ def parse_clause(
         unit=unit,
         period_start=start,
         period_end=end,
-        applicability=_parse_applicability(folded),
+        applicability=_parse_applicability(folded)
+        or (
+            _applicability_from_condition(folded[conditional[0] : conditional[1]])
+            if conditional is not None
+            else None
+        ),
         source_text=" ".join(clause_text.split()),
     )
