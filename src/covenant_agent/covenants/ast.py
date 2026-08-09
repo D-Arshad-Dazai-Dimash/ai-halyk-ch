@@ -28,6 +28,11 @@ class Period(str, Enum):
     FULL = "full"
     FOURTH_QUARTER = "fourth_quarter"
     PERIOD_END = "period_end"
+    #: Covenants tested "за любой финансовый квартал" bind on the worst
+    #: quarter, not on the year. Which quarter is worst depends on the
+    #: direction: a floor is broken by the smallest, a cap by the largest.
+    QUARTERLY_MIN = "quarterly_min"
+    QUARTERLY_MAX = "quarterly_max"
 
 
 class Comparator(str, Enum):
@@ -57,6 +62,9 @@ class Ebitda:
 
     scope: Scope = Scope.BORROWER
     adjusted: bool = False
+    #: EBITDA is measured per quarter by the same covenants that measure a
+    #: lone metric that way ("минимальная квартальная EBITDA").
+    period: Period = Period.FULL
 
 
 @dataclass(frozen=True)

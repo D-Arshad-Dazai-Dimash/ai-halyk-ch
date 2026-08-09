@@ -114,6 +114,15 @@ _LESS_WORD = re.compile(ru("за вычетом"))
 _GROUP_WORD = re.compile(ru("группы"))
 _ADJUSTED_WORD = re.compile(ru("скорректированн"))
 _Q4_WORD = re.compile(ru("четверт") + r"\w*\s+(?:" + ru("финансов") + r"\w*\s+)?" + ru("квартал"))
+#: A covenant measured per quarter rather than over the period: "за любой
+#: финансовый квартал", "в любом отдельном финансовом квартале",
+#: "квартальный лимит", "any single fiscal quarter".
+_PER_QUARTER = re.compile(
+    r"(?:" + ru("любо") + r"\w*\s+(?:" + ru("отдельн") + r"\w*\s+)?(?:"
+    + ru("финансов") + r"\w*\s+)?" + ru("квартал") + r"\w*"
+    r"|" + ru("квартальн") + r"\w*"
+    r"|any single fiscal quarter|per fiscal quarter|quarterly)"
+)
 _SPRINGING_WORD = re.compile(ru("только при условии"))
 #: The other way a springing covenant is written: the trigger comes first
 #: and the limit it governs follows ("Если <ratio> превышает 2.40х, то
@@ -426,6 +435,29 @@ def _combine(mentions: list[MetricMention], segment: str) -> Expression | None:
     return expressions[0]
 
 
+def _as_quarterly(expression: Expression, comparator: Comparator) -> Expression:
+    """Measure a single-metric covenant on its worst quarter.
+
+    Applied only to a lone metric: a ratio that compares one quarter against
+    the whole period ("quarterly revenue as a multiple of revenue for the
+    period") would be destroyed by quarterly-ing both of its sides, so a
+    compound expression is left alone rather than guessed at.
+
+    Which quarter is worst follows the direction of the test: a floor is
+    breached by the smallest quarter, a cap by the largest.
+    """
+    period = (
+        Period.QUARTERLY_MIN
+        if comparator in (Comparator.GE, Comparator.GT)
+        else Period.QUARTERLY_MAX
+    )
+    if isinstance(expression, MetricLeaf) and expression.period is Period.FULL:
+        return MetricLeaf(expression.metric, expression.scope, period)
+    if isinstance(expression, Ebitda) and expression.period is Period.FULL:
+        return Ebitda(expression.scope, expression.adjusted, period)
+    return expression
+
+
 def _parse_expression(clause_folded: str, unit: Unit) -> Expression | None:
     """Build the covenant's measured expression.
 
@@ -630,6 +662,9 @@ def parse_clause(
     expression = _parse_expression(threshold_area, unit)
     if comparator is None or expression is None:
         return None
+
+    if _PER_QUARTER.search(threshold_area):
+        expression = _as_quarterly(expression, comparator)
 
     dates = DATE_RANGE_RE.search(folded)
     start, end = (dates.group(1), dates.group(2)) if dates else (period_start, period_end)

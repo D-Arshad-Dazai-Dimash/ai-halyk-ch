@@ -7,9 +7,9 @@
     "notes": []
   },
   "6.2": {
-    "status": "COMPLIANT",
-    "actual": "17946922.83",
-    "evidence_txn_id": null,
+    "status": "BREACH",
+    "actual": "3237455.82",
+    "evidence_txn_id": "TXN-X1-0022",
     "resolved": true,
     "notes": []
   },

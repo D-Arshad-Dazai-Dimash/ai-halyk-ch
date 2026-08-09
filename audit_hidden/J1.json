@@ -1,8 +1,8 @@
 {
   "6.1": {
-    "status": "COMPLIANT",
-    "actual": "3106809.62",
-    "evidence_txn_id": null,
+    "status": "BREACH",
+    "actual": "366555.50",
+    "evidence_txn_id": "TXN-J1-0072",
     "resolved": true,
     "notes": []
   },

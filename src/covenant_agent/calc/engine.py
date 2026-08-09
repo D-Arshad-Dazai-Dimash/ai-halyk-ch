@@ -52,7 +52,12 @@ class Contribution:
     amount: Decimal
     rule: str
     scope: Scope = Scope.BORROWER
+    #: The quarter the caption states, when it states one.
     quarter: int | None = None
+    #: The quarter the transaction date falls in. Used only where a covenant
+    #: is measured per quarter and the caption is silent -- the caption stays
+    #: authoritative wherever it speaks.
+    date_quarter: int | None = None
 
 
 @dataclass
@@ -195,6 +200,7 @@ def build_totals(
                         value,
                         "ledger_anchor",
                         quarter=statement_quarter(transaction.description),
+                        date_quarter=_date_quarter(transaction.date),
                     )
                 )
 
@@ -249,9 +255,37 @@ def evaluate(expression: Expression, totals: MetricTotals) -> Decimal | None:
     if isinstance(expression, MetricLeaf):
         if expression.period is Period.FOURTH_QUARTER:
             return _quarter_total(expression.metric, totals)
+        if expression.period in (Period.QUARTERLY_MIN, Period.QUARTERLY_MAX):
+            return _quarterly_extreme(
+                expression.metric,
+                totals,
+                expression.scope,
+                smallest=expression.period is Period.QUARTERLY_MIN,
+            )
         return totals.total(expression.metric, expression.scope)
 
     if isinstance(expression, Ebitda):
+        if expression.period in (Period.QUARTERLY_MIN, Period.QUARTERLY_MAX):
+            # Per-quarter EBITDA is revenue less operating expenses within
+            # each quarter, not the year's EBITDA split up: a quarter with
+            # no revenue is a real quarter, and it is the one a floor bites
+            # on. Auditor add-backs are annual and carry no quarter, so an
+            # adjusted EBITDA is not measured this way.
+            revenue = _quarterly_buckets(Metric.REVENUE, totals, expression.scope)
+            costs = _quarterly_buckets(
+                Metric.OPERATING_EXPENSES, totals, expression.scope
+            )
+            quarters = set(revenue) | set(costs)
+            if not quarters:
+                return None
+            values = [
+                revenue.get(q, Decimal(0)) - costs.get(q, Decimal(0)) for q in quarters
+            ]
+            return (
+                min(values)
+                if expression.period is Period.QUARTERLY_MIN
+                else max(values)
+            )
         base = totals.total(Metric.REVENUE, expression.scope) - totals.total(
             Metric.OPERATING_EXPENSES, expression.scope
         )
@@ -278,6 +312,49 @@ def evaluate(expression: Expression, totals: MetricTotals) -> Decimal | None:
         return numerator / denominator
 
     raise TypeError(f"unsupported expression node: {type(expression).__name__}")
+
+
+def _date_quarter(date: str) -> int | None:
+    """The quarter an ISO date falls in, or None when it is unreadable."""
+    try:
+        month = int(date.split("-")[1])
+    except (IndexError, ValueError):
+        return None
+    return (month - 1) // 3 + 1 if 1 <= month <= 12 else None
+
+
+def _quarterly_extreme(
+    metric: Metric, totals: MetricTotals, scope: Scope, *, smallest: bool
+) -> Decimal | None:
+    """The smallest or largest quarterly total of a metric.
+
+    A covenant tested "за любой финансовый квартал" is broken by its worst
+    quarter, so the year's total answers a different question entirely --
+    an annual figure four times the floor says nothing about the quarter
+    that fell below it. Quarters come from the caption where it names one
+    and from the transaction date otherwise; when neither yields a quarter
+    there is nothing to compare and the cell is left undefined rather than
+    answered with the annual figure.
+    """
+    buckets = _quarterly_buckets(metric, totals, scope)
+    if not buckets:
+        return None
+    return min(buckets.values()) if smallest else max(buckets.values())
+
+
+def _quarterly_buckets(
+    metric: Metric, totals: MetricTotals, scope: Scope
+) -> dict[int, Decimal]:
+    """Per-quarter totals of one metric, keyed by quarter number."""
+    buckets: dict[int, Decimal] = {}
+    for contribution in totals.contributions:
+        if contribution.metric is not metric or contribution.scope is not scope:
+            continue
+        quarter = contribution.quarter or contribution.date_quarter
+        if quarter is None:
+            continue
+        buckets[quarter] = buckets.get(quarter, Decimal(0)) + contribution.amount
+    return buckets
 
 
 def _quarter_total(metric: Metric, totals: MetricTotals, quarter: int = 4) -> Decimal:
