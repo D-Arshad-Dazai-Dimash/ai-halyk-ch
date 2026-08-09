@@ -17,11 +17,9 @@
   },
   "6.3": {
     "status": "COMPLIANT",
-    "actual": "0",
+    "actual": "255845.95",
     "evidence_txn_id": null,
-    "resolved": false,
-    "notes": [
-      "clause_not_compiled"
-    ]
+    "resolved": true,
+    "notes": []
   }
 }

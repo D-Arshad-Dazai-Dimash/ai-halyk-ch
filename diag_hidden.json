@@ -19,23 +19,18 @@
   "authority_warnings": [
     "KC/TELE-4471: missing_authority:related_parties"
   ],
-  "uncompiled_clauses": [
-    "H2.6.1"
-  ],
+  "uncompiled_clauses": [],
   "model_assisted_clauses": [
-    "S2.6.3",
     "S3.6.1",
     "B3.6.2",
-    "B3.6.3",
     "B5.6.1",
     "F1.6.1",
     "F1.6.2",
-    "F2.6.1",
     "G1.6.2",
     "G3.6.1",
     "H1.6.1",
+    "H2.6.1",
     "H3.6.1",
-    "H5.6.1",
     "J2.6.1",
     "J2.6.2",
     "J3.6.1",
@@ -46,32 +41,26 @@
     "J5.6.1",
     "J6.6.3",
     "KC.6.2",
-    "X1.6.1",
     "X2.6.2",
-    "X3.6.1",
     "X3.6.2",
     "X3.6.4"
   ],
   "model_rejections": [
-    "6.1 via groq: Groq request failed: HTTP 429 -- {\"error\":{\"message\":\"Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_<redacted>` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98266, Requested 2599. Please try again in 12m27.36s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.",
-    "6.1 via groq: model reported the clause as unsupported",
-    "6.1 via groq: Groq request failed: HTTP 429 -- {\"error\":{\"message\":\"Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_<redacted>` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98264, Requested 3008. Please try again in 18m19.008s. Need more tokens? Upgrade to Dev Tier today at https://console.groq",
-    "6.1 via groq: model reported the clause as unsupported",
     "5.4 via groq: model reported the clause as unsupported",
     "5.4 via groq: model reported the clause as unsupported",
-    "5.4 via groq: Groq request failed: HTTP 429 -- {\"error\":{\"message\":\"Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_<redacted>` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98264, Requested 3817. Please try again in 29m57.984s. Need more tokens? Upgrade to Dev Tier today at https://console.groq",
+    "5.4 via groq: Groq request failed: HTTP 429 -- {\"error\":{\"message\":\"Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_<redacted>` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 99258, Requested 3819. Please try again in 44m18.528s. Need more tokens? Upgrade to Dev Tier today at https://console.groq",
     "5.4 via groq: model reported the clause as unsupported",
-    "5.5 via groq: Groq request failed: HTTP 429 -- {\"error\":{\"message\":\"Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_<redacted>` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98264, Requested 2652. Please try again in 13m11.424s. Need more tokens? Upgrade to Dev Tier today at https://console.groq",
+    "5.5 via groq: Groq request failed: HTTP 429 -- {\"error\":{\"message\":\"Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_<redacted>` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 99258, Requested 2654. Please try again in 27m31.968s. Need more tokens? Upgrade to Dev Tier today at https://console.groq",
     "5.5 via groq: model reported the clause as unsupported",
-    "5.5 via groq: Groq request failed: HTTP 429 -- {\"error\":{\"message\":\"Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_<redacted>` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98263, Requested 3817. Please try again in 29m57.12s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.",
+    "5.5 via groq: Groq request failed: HTTP 429 -- {\"error\":{\"message\":\"Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_<redacted>` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 99258, Requested 3819. Please try again in 44m18.528s. Need more tokens? Upgrade to Dev Tier today at https://console.groq",
     "5.5 via groq: model reported the clause as unsupported",
-    "5.6 via groq: Groq request failed: HTTP 429 -- {\"error\":{\"message\":\"Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_<redacted>` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98263, Requested 2618. Please try again in 12m41.184s. Need more tokens? Upgrade to Dev Tier today at https://console.groq",
+    "5.6 via groq: Groq request failed: HTTP 429 -- {\"error\":{\"message\":\"Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_<redacted>` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 99258, Requested 2620. Please try again in 27m2.592s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.",
     "5.6 via groq: model reported the clause as unsupported",
-    "5.6 via groq: Groq request failed: HTTP 429 -- {\"error\":{\"message\":\"Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_<redacted>` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98263, Requested 3817. Please try again in 29m57.12s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.",
+    "5.6 via groq: Groq request failed: HTTP 429 -- {\"error\":{\"message\":\"Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_<redacted>` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 99257, Requested 3819. Please try again in 44m17.664s. Need more tokens? Upgrade to Dev Tier today at https://console.groq",
     "5.6 via groq: model reported the clause as unsupported",
-    "5.7 via groq: Groq request failed: HTTP 429 -- {\"error\":{\"message\":\"Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_<redacted>` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98263, Requested 2479. Please try again in 10m41.088s. Need more tokens? Upgrade to Dev Tier today at https://console.groq",
+    "5.7 via groq: Groq request failed: HTTP 429 -- {\"error\":{\"message\":\"Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_<redacted>` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 99257, Requested 2481. Please try again in 25m1.632s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.",
     "5.7 via groq: model reported the clause as unsupported",
-    "5.7 via groq: Groq request failed: HTTP 429 -- {\"error\":{\"message\":\"Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_<redacted>` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98263, Requested 3817. Please try again in 29m57.12s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.",
+    "5.7 via groq: Groq request failed: HTTP 429 -- {\"error\":{\"message\":\"Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_<redacted>` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 99257, Requested 3819. Please try again in 44m17.664s. Need more tokens? Upgrade to Dev Tier today at https://console.groq",
     "5.7 via groq: model reported the clause as unsupported",
     "6.3 via groq: threshold 0.05 does not occur in the clause text",
     "6.2 via groq: threshold 0.8 does not occur in the clause text"
@@ -81,7 +70,7 @@
     "openai/gpt-oss-120b"
   ],
   "unresolved_cells": [
-    "KC.6.2: metric_unresolved, clause_compiled_by_model"
+    "J6.6.1: negative_metric"
   ],
   "clean": false
 }

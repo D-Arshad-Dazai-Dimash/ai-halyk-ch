@@ -95,6 +95,10 @@ _METRIC_TERMS: tuple[tuple[str, Metric], ...] = (
     (ru("процентов"), Metric.INTEREST_EXPENSE),
     (ru("налог") + r"\w*", Metric.TAXES),
     (ru("выручк") + r"\w*", Metric.REVENUE),
+    # Marketing is its own covenant caption in some agreements ("совокупные
+    # расходы по статье «Маркетинговые расходы»"), stated in either language.
+    (ru("маркетингов") + r"\w*", Metric.MARKETING),
+    (r"marketing", Metric.MARKETING),
 )
 
 _RELATED_PARTY_TERMS = (ru("связанн"), ru("аффилирован"))

@@ -1,11 +1,12 @@
 {
   "6.1": {
     "status": "COMPLIANT",
-    "actual": "0",
+    "actual": "0.32",
     "evidence_txn_id": null,
-    "resolved": false,
+    "resolved": true,
     "notes": [
-      "clause_not_compiled"
+      "springing_condition_not_met",
+      "clause_compiled_by_model"
     ]
   },
   "6.2": {

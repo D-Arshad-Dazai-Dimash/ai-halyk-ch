@@ -1,7 +1,7 @@
 {
   "6.1": {
     "status": "COMPLIANT",
-    "actual": "0.00",
+    "actual": "2993644.31",
     "evidence_txn_id": null,
     "resolved": true,
     "notes": []
@@ -15,11 +15,9 @@
   },
   "6.3": {
     "status": "COMPLIANT",
-    "actual": "0.00",
+    "actual": "254812.36",
     "evidence_txn_id": null,
     "resolved": true,
-    "notes": [
-      "clause_compiled_by_model"
-    ]
+    "notes": []
   }
 }

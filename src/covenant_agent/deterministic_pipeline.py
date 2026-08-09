@@ -280,6 +280,15 @@ def _evaluate_cell(
     if raw is None:
         return _unresolved(scenario_id, clause, "metric_unresolved")
 
+    if raw < 0:
+        # A covenant measures a magnitude, so a negative result means the
+        # expression did not model the clause -- a difference taken in the
+        # wrong direction, or a scope that already excludes what is being
+        # subtracted. Reporting it is worse than admitting it: the number
+        # would be wrong, and the submission schema rejects it outright,
+        # which would cost every other cell in the run rather than this one.
+        return _unresolved(scenario_id, clause, "negative_metric")
+
     notes: list[str] = []
     if not applies(covenant, totals):
         # A springing covenant whose trigger is not met is complied with by

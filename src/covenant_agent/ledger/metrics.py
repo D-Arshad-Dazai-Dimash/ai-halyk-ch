@@ -47,6 +47,7 @@ class Metric(str, Enum):
     INTEREST_EXPENSE = "interest_expense"
     FINANCING_PROCEEDS = "financing_proceeds"
     PROFESSIONAL_SERVICES = "professional_services"
+    MARKETING = "marketing"
     # Scope metrics: membership is decided by the KYC dossier, never by how
     # a payment was described, so no ledger anchor may produce them.
     RELATED_PARTY_PAYMENTS = "related_party_payments"
@@ -58,69 +59,134 @@ class Metric(str, Enum):
 INFLOW_METRICS = frozenset({Metric.REVENUE, Metric.FINANCING_PROCEEDS})
 
 # Ordered anchor patterns. First match wins, so more specific captions are
-# listed before broader ones. All are accounting captions, not fixed phrases
-# copied from any particular borrower's ledger.
+# listed before broader ones. Each targets an accounting caption -- what the
+# line item *is* -- rather than a phrasing observed in one corpus: the same
+# statement caption is written many ways ("payroll disbursement", "payroll
+# for warehouse staff", "bi-weekly payroll run"), and matching the phrasing
+# rather than the caption classifies nothing on the next borrower.
 _ANCHORS: tuple[tuple[Metric, re.Pattern[str]], ...] = (
-    # Revenue recognised as a settlement of delivered goods/services.
-    (Metric.REVENUE, re.compile(r"\bsales settlement\b", re.I)),
-    # Financing inflow drawn under a facility.
-    (Metric.FINANCING_PROCEEDS, re.compile(r"\bfacility drawdown\b", re.I)),
-    # Capital expenditure: capital assets acquired, or transferred out to a
-    # subsidiary. Both are the borrower's capital spend for the period;
-    # whether a transfer additionally counts against an unrestricted-
-    # subsidiary limit is decided by the KYC dossier, not here.
+    # Revenue: sales/subscription/interconnect income recognised in period.
+    (
+        Metric.REVENUE,
+        re.compile(
+            r"\bsales settlement\b"
+            r"|\brevenue\b"
+            r"|\bsales invoice(?:d|s)?\b",
+            re.I,
+        ),
+    ),
+    # Financing inflow: money drawn under a facility, loan or note.
+    (
+        Metric.FINANCING_PROCEEDS,
+        re.compile(
+            r"\bdrawdown\b"
+            r"|\b(?:loan|facility|note|bond)\b.*\bproceeds\b"
+            r"|\bproceeds\b.*\b(?:loan|facility|note|bond)\b",
+            re.I,
+        ),
+    ),
+    # Advisory, consulting and management fees. Listed before marketing so a
+    # "brand advisory engagement" is read by its head noun (advisory) rather
+    # than by the brand it advises on.
+    (
+        Metric.PROFESSIONAL_SERVICES,
+        re.compile(
+            r"\b(?:advisory|consultanc(?:y|ies)|consulting)\b"
+            r"|\bmanagement retainer fee\b"
+            r"|\bprofessional fees\b",
+            re.I,
+        ),
+    ),
+    # Marketing and advertising spend -- a covenant caption in its own right,
+    # separate from advisory work.
+    (
+        Metric.MARKETING,
+        re.compile(
+            r"\bmarketing\b"
+            r"|\badvertis(?:ing|ement)\b"
+            r"|\bad campaign\b"
+            r"|\bmedia buy\b"
+            r"|\bbillboard\b",
+            re.I,
+        ),
+    ),
+    # Insurance cover. Excludes claims and recoveries, which flow the other
+    # way and are not premium spend.
+    (
+        Metric.INSURANCE_PREMIUMS,
+        re.compile(r"\binsurance\b(?!.*\b(?:claim|reimbursement|recovery)\b)", re.I),
+    ),
+    # Capital assets acquired, upgraded, or transferred out to a group
+    # entity. All are the borrower's capital spend for the period; whether a
+    # transfer additionally counts against an unrestricted-subsidiary limit
+    # is decided by the KYC dossier, not here.
     (
         Metric.CAPITAL_EXPENDITURES,
         re.compile(
-            r"\bpurchase of\b.*\b(?:equipment|plant|machinery|vehicles?)\b"
-            r"|\btransfer of\b.*\bto subsidiary\b",
+            r"\b(?:equipment|machinery|plant and equipment|tooling|rolling stock)\b"
+            r".*\b(?:purchase|upgrade|instal?ment|acquisition|transfer)\b"
+            r"|\b(?:purchase|upgrade|acquisition|imported|transfer)\b.*"
+            r"\b(?:equipment|machinery|tooling|rolling stock)\b"
+            r"|\btransfer of\b.*\bto (?:subsidiary|group entity)\b",
+            re.I,
+        ),
+    ),
+    # Interest on borrowings.
+    (
+        Metric.INTEREST_EXPENSE,
+        re.compile(
+            r"\binterest\b(?!.*\bincome\b)"
+            r"|\bdefault interest\b",
+            re.I,
+        ),
+    ),
+    # Statutory taxes and levies assessed or remitted in the period.
+    # Rebates, reclaims and refunds flow the other way and are excluded.
+    (
+        Metric.TAXES,
+        re.compile(
+            r"\btax\b(?!.*\b(?:refund|rebate|reclaim|overpayment)\b)"
+            r"|\blevy\b(?!.*\b(?:refund|rebate)\b)",
+            re.I,
+        ),
+    ),
+    # Personnel cost disbursed in the period.
+    (
+        Metric.PAYROLL,
+        re.compile(
+            r"\bpayroll\b(?!.*\b(?:returned|recovered|refund)\b)"
+            r"|\bsalar(?:y|ies)\b"
+            r"|\bwages\b",
+            re.I,
+        ),
+    ),
+    # Lease or rent of land and premises -- a covenant caption distinct from
+    # utilities. Credits and refunds are not lease spend.
+    (
+        Metric.LEASE_PAYMENTS,
+        re.compile(
+            r"\blease payments?\b"
+            r"|\brent\b(?!.*\b(?:credit|refund|received|free)\b)",
+            re.I,
+        ),
+    ),
+    # Utility supply: energy, water, heating, sewerage.
+    (
+        Metric.UTILITIES,
+        re.compile(
+            r"\b(?:utilit(?:y|ies)|electricity|water|sewer(?:age)?|district heating|gas supply)\b"
+            r"(?!.*\b(?:deposit returned|refund)\b)",
             re.I,
         ),
     ),
     # Operating and maintenance cost of running the facility, including
-    # one-off servicing, survey, repair and remediation works.
+    # one-off servicing, repair, survey and remediation works.
     (
         Metric.OPERATING_EXPENSES,
         re.compile(
-            r"\b(?:servicing and operating costs|operating and maintenance expenses"
-            r"|servicing contract|servicing|repair works|clearance works|remediation)\b",
-            re.I,
-        ),
-    ),
-    # Lease of land/premises (a distinct covenant caption from utilities).
-    (Metric.LEASE_PAYMENTS, re.compile(r"\bland lease payments\b", re.I)),
-    # Utility supply: energy, water, heating.
-    (
-        Metric.UTILITIES,
-        re.compile(
-            r"\b(?:utilities supply|utility charge|electricity supply charges|"
-            r"electricity and water|district heating)\b",
-            re.I,
-        ),
-    ),
-    # Personnel cost actually disbursed/settled in the period.
-    (
-        Metric.PAYROLL,
-        re.compile(r"\bpayroll\b.*\b(?:disbursement|settlement)\b", re.I),
-    ),
-    # Statutory taxes assessed or paid in instalments to the revenue authority.
-    (
-        Metric.TAXES,
-        re.compile(r"\btax\b.*\b(?:assessment|instalment|installment)\b", re.I),
-    ),
-    # Insurance cover premium.
-    (Metric.INSURANCE_PREMIUMS, re.compile(r"\binsurance premium\b", re.I)),
-    # Interest on borrowings.
-    (
-        Metric.INTEREST_EXPENSE,
-        re.compile(r"\b(?:loan interest payment|interest on overdraft)\b", re.I),
-    ),
-    # Advisory/management fees -- a caption an auditor may reclassify.
-    (
-        Metric.PROFESSIONAL_SERVICES,
-        re.compile(
-            r"\b(?:management advisory retainer|management retainer fee|"
-            r"advisory engagement on)\b",
+            r"\b(?:operating|maintenance|servicing|repair|handling)\b"
+            r".*\b(?:cost|costs|expenses?|charges?|works?|contract)\b"
+            r"|\b(?:servicing|repair works|clearance works|remediation|decommissioning)\b",
             re.I,
         ),
     ),

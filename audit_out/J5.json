@@ -9,15 +9,15 @@
     ]
   },
   "6.2": {
-    "status": "COMPLIANT",
-    "actual": "0.00",
+    "status": "BREACH",
+    "actual": "0.77",
     "evidence_txn_id": null,
     "resolved": true,
     "notes": []
   },
   "6.3": {
     "status": "COMPLIANT",
-    "actual": "9530683.89",
+    "actual": "7386887.30",
     "evidence_txn_id": "TXN-J5-0023",
     "resolved": true,
     "notes": []
